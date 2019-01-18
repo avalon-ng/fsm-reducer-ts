@@ -9,4 +9,3 @@ coverage
 *.log
 
 package-lock.json
-test_modules

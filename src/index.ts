@@ -1,94 +1,128 @@
-// makeFSM(stateMap)
-// interface Foo<T, K in keyof T> {
-//   [k: K]: Function;
-// }
+interface IFSMOption {
+  validateMap?: object;
+}
 
-interface IStateMap {
+interface IValue {
+
+}
+
+interface IState<T> {
+  status: T;
+  value: IValue;
+}
+
+interface IStateMap<A extends string> {
   start: {
     status: string;
     value: object;
   };
   states: {
-    [key: string]: {
-      [key: string]: string | (() => string)
+    [status: string]: {
+      [action in A]: string;
     }
-  };
-}
-
-interface IActionMap {
-  [key: string]: string
-}
-
-interface IOptions {
-  prefix?: string;
-  validateMap?: any;
-}
-
-type MakeFSM = (stateMap: IStateMap, actionMap: IActionMap, opts?: IOptions) => object
-
-interface IAction {
-  type: string;
-}
-
-type ActionFunction = (state: any) => string
-// type Handler = (state: any, action: any) => 
-
-const makeFSM: MakeFSM = (stateMap, actionMap, opts = {}) => {
-  const { prefix = '', validateMap = {} } = opts;
-  const initState = {
-    status: stateMap.start.status,
-    value: stateMap.start.value
-  };
-
-  let currentStatus = stateMap.start.status;
-  let validateError: Error | null = null;
-
-  const getHandler = (handles: any, handlerName: string): (value: any, actionObj: any) => any => {
-    const actionParts = handlerName.split('.');
-    if (actionParts.length === 1) {
-      return handles[handlerName];
-    }
-    return getHandler(handles[actionParts[0]], actionParts.slice(1).join('.'));
   }
+}
 
-  function transit(state: any, action: IAction | ActionFunction | string): string {
-    let nextStatus = '';
-    if (typeof action === 'function') {
+interface IActionMap<S> {
+  [key: string]: (state: IState<S>, ...args: any[]) => IState<S>;
+}
+
+interface IActionObject {
+  type: string;
+  [key: string]: any;
+}
+
+interface IValidateMap {
+  [key: string]: any;
+}
+
+type Reducer<S> = (state: IState<S>, action: IActionObject) => IState<S>
+type GetActions = () => string[]
+type ValidateError = string | null
+type ValidateFunction = (state: IValue, action: IActionObject) => ValidateError
+type ActionFunction = (state: IValue, action: IActionObject) => IValue
+// type HandlerFunction = (handles: object, handleName: string) => ActionFunction | ValidateFunction
+
+
+function makeFSM<
+    S extends Extract<keyof IStateMap<A>['states'], string>,
+    AM extends IActionMap<S>,
+    A extends Extract<keyof AM, string>>
+    (stateMap: IStateMap<A>, actionMap: AM, opts?: IFSMOption): {
+        reducer: Reducer<S>;
+        getActions: GetActions;
+        getValidateError: () => ValidateError;
+        validate: (state: IState<S>, actionObj: IActionObject) => ValidateError;
+        getActionsWithState: (state: IState<S>) => string[];
+    } {
+
+  const validateMap: IValidateMap = (opts || {}).validateMap || {};
+  const initState: IState<S> = stateMap.start as IState<S>;
+  let currentStatus: S = stateMap.start.status as S;
+  let validateError: ValidateError = null;
+
+  function getHandler(handles: IActionMap<S>, handlerName: string): ActionFunction;
+  function getHandler(handles: IValidateMap, handlerName: string): ValidateFunction;
+  function getHandler(handles: any, handlerName: string): any {
+    return handles[handlerName];
+    //   // const actionParts = handlerName.split('.');
+    //   // if(actionParts.length === 1) {
+    //   //   return handles[handlerName];
+    //   // }
+    //   // return getHandler(handles[actionParts[0]], actionParts.slice(1).join('.'));
+  }
+  function transit(state: any, action: any): S ;
+  function transit(state: IState<S>, action: Function): S;
+  function transit(state: IState<S>, action: S): S;
+  function transit(state: IState<S>, action: any): S {
+    let nextStatus: S = currentStatus;
+    if(typeof action === 'function') {
       nextStatus = action(state);
-    } else if (typeof action === 'string') {
+    } else {
       nextStatus = action;
     }
-    if (!stateMap.states[nextStatus]) {
+    if(!stateMap.states[nextStatus]) {
       const msg = `cannot transit to status ${nextStatus} from ${currentStatus}`;
-      validateError = new Error(msg);
+      validateError = msg;
       nextStatus = currentStatus;
     }
     return nextStatus;
   }
 
-  const reducer = (state = initState, actionObj: IAction) => {
-    const { type } = actionObj;
-    const actionName = (type || '').replace(new RegExp('^' + prefix), '');
-    if (!actionName) {
+  const validate = (state: any, actionObj: any): ValidateError => {
+    const { value } = state;
+    const { type: actionName } = actionObj;
+    const fn: any = getHandler(validateMap, actionName);
+    if (fn) {
+      return fn(value, actionObj);
+    }
+    return 'Not found validation function.';
+  }
+
+  const reducer: Reducer<S> = (state = initState, actionObj) => {
+    const { type: actionName } = actionObj;
+
+    if( !actionName ) {
       return state;
     }
 
     const { status, value } = state;
 
-    const availableActions = stateMap.states[status];
+    const availableActions: any = stateMap.states[status];
 
-    if (!availableActions[actionName]) {
+    if(!availableActions[actionName]) {
       const msg = `action ${actionName} is not available for status ${status}`;
-      validateError = new Error(msg);
+      validateError = msg;
       return state;
     }
 
-    const action = getHandler(actionMap, actionName);
-    const validate = getHandler(validateMap, actionName);
 
-    if (validate) {
-      validateError = validate(value, actionObj);
-      if (validateError) {
+    const action: ActionFunction = getHandler(actionMap, actionName);
+    const validateFunction: ValidateFunction = getHandler(validateMap, actionName);
+
+    if ( validateFunction ) {
+      validateError = validateFunction(value, actionObj);
+      if ( validateError ){
         return state;
       }
     }
@@ -102,20 +136,27 @@ const makeFSM: MakeFSM = (stateMap, actionMap, opts = {}) => {
       status: nextStatus,
       value: nextValue
     };
-  };
+  }
 
-  const getActions = () => {
+  const getActionsWithState = (state: IState<S>): string[] => {
+    const { status } = state;
+    return Object.keys(stateMap.states[status]);
+  }
+
+  const getActions = (): string[] => {
     return Object.keys(stateMap.states[currentStatus]);
-  };
+  }
 
-  const getValidateError = () => {
+  const getValidateError = (): ValidateError => {
     return validateError;
-  };
+  }
 
   return {
     getActions,
+    getActionsWithState,
     getValidateError,
-    reducer
+    reducer,
+    validate,
   };
 }
 
