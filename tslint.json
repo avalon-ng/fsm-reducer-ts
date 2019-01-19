@@ -19,7 +19,11 @@
 
     // Functional style rules
     "no-this": true,
-    "no-mixed-interface": true
+    "no-mixed-interface": true,
     /* end tslint-immutable rules */
+
+    "prefer-conditional-expression": false,
+    "object-literal-sort-keys": false,
+    "one-variable-per-declaration": false
   }
 }

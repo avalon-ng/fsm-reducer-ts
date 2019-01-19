@@ -23,6 +23,10 @@ interface IStateMap<A extends string> {
   }
 }
 
+interface IAvailableActionMap {
+  [key: string]: string | ActionFunction
+}
+
 interface IActionMap<S> {
   [key: string]: (state: IState<S>, ...args: any[]) => IState<S>;
 }
@@ -56,7 +60,7 @@ function makeFSM<
         getActionsWithState: (state: IState<S>) => string[];
     } {
 
-  const validateMap: IValidateMap = (opts || {}).validateMap || {};
+  const { validateMap = {} }: { validateMap?: IValidateMap } = opts || {};
   const initState: IState<S> = stateMap.start as IState<S>;
   let currentStatus: S = stateMap.start.status as S;
   let validateError: ValidateError = null;
@@ -72,7 +76,7 @@ function makeFSM<
     //   // return getHandler(handles[actionParts[0]], actionParts.slice(1).join('.'));
   }
   function transit(state: any, action: any): S ;
-  function transit(state: IState<S>, action: Function): S;
+  function transit(state: IState<S>, action: ActionFunction): S;
   function transit(state: IState<S>, action: S): S;
   function transit(state: IState<S>, action: any): S {
     let nextStatus: S = currentStatus;
@@ -89,9 +93,9 @@ function makeFSM<
     return nextStatus;
   }
 
-  const validate = (state: any, actionObj: any): ValidateError => {
-    const { value } = state;
-    const { type: actionName } = actionObj;
+  const validate = (state: IState<S>, actionObj: IActionObject): ValidateError => {
+    const { value }: { value: IValue } = state;
+    const { type: actionName }: { type: string } = actionObj;
     const fn: any = getHandler(validateMap, actionName);
     if (fn) {
       return fn(value, actionObj);
@@ -99,16 +103,16 @@ function makeFSM<
     return 'Not found validation function.';
   }
 
-  const reducer: Reducer<S> = (state = initState, actionObj) => {
-    const { type: actionName } = actionObj;
+  const reducer: Reducer<S> = (state: IState<S> = initState, actionObj: IActionObject) => {
+    const { type: actionName }: { type: string} = actionObj;
 
     if( !actionName ) {
       return state;
     }
 
-    const { status, value } = state;
+    const { status, value }: { status: S, value: IValue } = state;
 
-    const availableActions: any = stateMap.states[status];
+    const availableActions: IAvailableActionMap = stateMap.states[status];
 
     if(!availableActions[actionName]) {
       const msg = `action ${actionName} is not available for status ${status}`;
@@ -128,8 +132,8 @@ function makeFSM<
     }
 
     // alow action to be no operation
-    const nextValue = action(value, actionObj) || value;
-    const nextStatus = transit(nextValue, availableActions[actionName]);
+    const nextValue: IValue = action(value, actionObj) || value;
+    const nextStatus: S = transit(nextValue, availableActions[actionName]);
     currentStatus = nextStatus;
 
     return {
@@ -139,7 +143,7 @@ function makeFSM<
   }
 
   const getActionsWithState = (state: IState<S>): string[] => {
-    const { status } = state;
+    const { status }: { status: S } = state;
     return Object.keys(stateMap.states[status]);
   }
 
