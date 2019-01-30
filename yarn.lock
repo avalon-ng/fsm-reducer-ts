@@ -2160,6 +2160,18 @@ fsevents@^1.2.2:
     nan "^2.9.2"
     node-pre-gyp "^0.10.0"
 
+fsm-avalon-ts@^1.0.0:
+  version "1.0.0"
+  resolved "https://registry.yarnpkg.com/fsm-avalon-ts/-/fsm-avalon-ts-1.0.0.tgz#99e014f45cefeca168a55a3580d7f87237c547e1"
+  integrity sha512-pxI7OoMIq6cjZtkBQEGIpi7tcQc/NPt6+Un++kboQCQwKAY1gaw0rq6BNoNY2fbSgFKKU+qBurp9TaIHhbWsQQ==
+  dependencies:
+    fsm-reducer "^1.0.2"
+
+fsm-reducer@^1.0.2:
+  version "1.0.2"
+  resolved "https://registry.yarnpkg.com/fsm-reducer/-/fsm-reducer-1.0.2.tgz#46f08e1313623f134edb237916feb8cb4b29e780"
+  integrity sha512-gE01Ib66MsA5QCmHsM9D8OnAj8fguW2xSzHVq68XkyWZH++kdIKpfzjdWK6N/ANIVfL/MghJLUhj9qkf+eIU9Q==
+
 function-bind@^1.0.2, function-bind@^1.1.1:
   version "1.1.1"
   resolved "https://registry.yarnpkg.com/function-bind/-/function-bind-1.1.1.tgz#a56899d3ea3c9bab874bb9773b7c5ede92f4895d"

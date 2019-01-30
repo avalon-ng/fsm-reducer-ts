@@ -3,6 +3,7 @@ build
 test
 src/**.js
 .idea/*
+test_modules
 
 coverage
 .nyc_output
